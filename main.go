@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	logsAPI    = "https://www.snapengage.com/api/v2/%s/logs?widgetId=%s&start=%s&end=%s"
-	dateFormat = "2006-01-02"
+	logsAPI       = "https://www.snapengage.com/api/v2/%s/logs?widgetId=%s&start=%s&end=%s"
+	dateFormat    = "2006-01-02"
+	dirDateFormat = "2006" + string(os.PathSeparator) + "01" + string(os.PathSeparator) + "02"
 )
 
 func main() {
@@ -31,6 +32,7 @@ func main() {
 	flgStart := strEnvFlag("start", "SNAPENGAGE_START", "Start exporting from what date YYYY-MM-DD")
 	flgEnd := strEnvFlag("end", "SNAPENGAGE_END", "Stop exporting at date YYYY-MM-DD - Defaults to TODAY if unspecified")
 	flgOutput := strEnvFlag("output", "SNAPENGAGE_OUTPUT", "Directory to write cases to")
+	flgByDate := flag.Bool("bydate", false, "Store by date, makes for directories with smaller numbers of files")
 
 	flgHelp := flag.Bool("help", false, "Displays help message")
 
@@ -96,7 +98,7 @@ func main() {
 		}
 
 		for _, v := range jsonResp.Cases {
-			last = saveFile(*flgOutput, v)
+			last = saveFile(*flgOutput, v, *flgByDate)
 		}
 
 		if !last.IsZero() {
@@ -114,7 +116,15 @@ func main() {
 	}
 }
 
-func saveFile(dir string, c Case) time.Time {
+func saveFile(dir string, c Case, byDate bool) time.Time {
+	if byDate {
+		dir = filepath.Join(dir, c.Created.Format(dirDateFormat))
+		if err := os.MkdirAll(dir, 0755); err != nil && !errors.Is(err, os.ErrExist) {
+			fmt.Println("Unable to create output path", err.Error())
+			os.Exit(1)
+		}
+	}
+
 	fn := filepath.Join(dir, c.ID+".json")
 	if s, err := os.Stat(fn); err == nil && s.Size() > 0 {
 		fmt.Print(",")
