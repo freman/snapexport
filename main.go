@@ -58,6 +58,17 @@ func main() {
 		endDate = parseDateFlag("end", *flgEnd)
 	}
 
+	toStr := *flgOutput
+	if *flgByDate {
+		toStr = filepath.Join(toStr, "YYYY", "MM", "DD")
+	}
+
+	fmt.Printf("Exporting from %s to %s writing to %s\n",
+		startDate.Format(dateFormat),
+		endDate.Format(dirDateFormat),
+		toStr,
+	)
+
 	if err := os.Mkdir(*flgOutput, 0755); err != nil && !errors.Is(err, os.ErrExist) {
 		fmt.Println("Unable to create output path", err.Error())
 		os.Exit(1)
@@ -110,7 +121,7 @@ func main() {
 			break
 		}
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 105)
 
 		jsonResp, err = c.fetch(jsonResp.LinkToNextSetOfResults)
 	}
@@ -128,7 +139,7 @@ func saveFile(dir string, c Case, byDate bool) time.Time {
 	fn := filepath.Join(dir, c.ID+".json")
 	if s, err := os.Stat(fn); err == nil && s.Size() > 0 {
 		fmt.Print(",")
-		return time.Time{}
+		return c.Created
 	}
 
 	f, err := os.Create(fn)
